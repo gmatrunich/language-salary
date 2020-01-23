@@ -7,9 +7,11 @@ from dotenv import load_dotenv
 
 HH_ENTRY_URL = "https://api.hh.ru/vacancies"
 SJ_ENTRY_URL = "https://api.superjob.ru/2.30/vacancies/"
-HH_REGION = "1"  # Москва
-SJ_REGION = "4"  # Москва
+HH_REGION = "1"           # Москва
+HH_PERIOD = "30"          # Вакансии за 30 последних дней
+SJ_REGION = "4"           # Москва
 SJ_SPECIALIZATION = "48"  # "Разработка, программирование"
+SJ_PERIOD = 0             # Вакансии за 30 последних дней
 LANGUAGES = ['python', 'php', 'java', 'ruby', 'c++', 'c#']
 
 
@@ -28,7 +30,7 @@ def get_sj_vacancies_by_language(languages, token):
             'keyword': vacancy_title,
             'town': SJ_REGION,
             'catalogues': SJ_SPECIALIZATION,
-            'period': 0
+            'period': SJ_PERIOD,
         }
         response = requests.get(SJ_ENTRY_URL, headers=make_sj_headers(token), params=payload)
         response.raise_for_status()
@@ -74,7 +76,7 @@ def collect_all_vacancies_sj(vacancy, token):
             'catalogues': SJ_SPECIALIZATION,
             'page': page,
             'count': "100",
-            'period': 0,
+            'period': SJ_PERIOD,
         }
         page_response = requests.get(SJ_ENTRY_URL, headers=make_sj_headers(token), params=payload)
         page_response.raise_for_status()
@@ -92,7 +94,7 @@ def get_hh_vacancies_by_language(languages):
         payload = {
                     'text': vacancy_title,
                     'area': HH_REGION,
-                    'period': "30",
+                    'period': HH_PERIOD,
                     'clusters': "true",
                     'per_page': "0"
         }
