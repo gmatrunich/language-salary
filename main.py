@@ -25,19 +25,19 @@ def make_sj_headers(token):
 def get_sj_vacancies_by_language(languages, token):
     vacancies_with_salaries = {}
     for language in languages:
-        vacancy_title = "программист {}".format(language)
+        vacancy_query = "программист {}".format(language)
         payload = {
-            'keyword': vacancy_title,
+            'keyword': vacancy_query,
             'town': SJ_REGION,
             'catalogues': SJ_SPECIALIZATION,
             'period': SJ_PERIOD,
         }
         response = requests.get(SJ_ENTRY_URL, headers=make_sj_headers(token), params=payload)
         response.raise_for_status()
-        vacancies_data = response.json()
-        average_salary, vacancies_processed = predict_rub_salary_sj(vacancy_title, token)
+        all_vacancies = response.json()
+        average_salary, vacancies_processed = predict_rub_salary_sj(vacancy_query, token)
         vacancy_result = {language: {
-            "vacancies_found": vacancies_data['total'],
+            "vacancies_found": all_vacancies['total'],
             "vacancies_processed": vacancies_processed,
             "average_salary": average_salary
         }}
@@ -45,19 +45,19 @@ def get_sj_vacancies_by_language(languages, token):
     return vacancies_with_salaries
 
 
-def predict_rub_salary_sj(vacancy, token):
-    all_vacancies_collected_data = collect_all_vacancies_sj(vacancy, token)
+def predict_rub_salary_sj(vacancy_query, token):
+    all_collected_vacancies = collect_all_vacancies_sj(vacancy_query, token)
     salaries = []
-    for page_data in all_vacancies_collected_data:
-        for vacancy in page_data['objects']:
+    for page in all_collected_vacancies:
+        for vacancy in page['objects']:
             if vacancy['currency'] == 'rub':
                 salaries.append(predict_salary(vacancy['payment_from'], vacancy['payment_to']))
     salaries_sum = 0
     vacancies_processed = 0
-    for item in salaries:
-        if item is not None:
+    for salary in salaries:
+        if salary is not None:
             vacancies_processed = vacancies_processed + 1
-            salaries_sum = salaries_sum + item
+            salaries_sum = salaries_sum + salary
     if vacancies_processed != 0:
         average_salary = int(salaries_sum / vacancies_processed)
     else:
@@ -65,13 +65,11 @@ def predict_rub_salary_sj(vacancy, token):
     return average_salary, vacancies_processed
 
 
-def collect_all_vacancies_sj(vacancy, token):
-    print(vacancy)
-    collected_vacancies_data = []
+def collect_all_vacancies_sj(vacancy_query, token):
+    collected_vacancies = []
     for page in count(0):
-        print(page)
         payload = {
-            'keyword': vacancy,
+            'keyword': vacancy_query,
             'town': SJ_REGION,
             'catalogues': SJ_SPECIALIZATION,
             'page': page,
@@ -80,19 +78,19 @@ def collect_all_vacancies_sj(vacancy, token):
         }
         page_response = requests.get(SJ_ENTRY_URL, headers=make_sj_headers(token), params=payload)
         page_response.raise_for_status()
-        page_data = page_response.json()
-        collected_vacancies_data.append(page_data)
-        if page_data['more'] != 'false':
+        page = page_response.json()
+        collected_vacancies.append(page)
+        if page['more'] != 'false':
             break
-    return collected_vacancies_data
+    return collected_vacancies
 
 
 def get_hh_vacancies_by_language(languages):
     vacancies_with_salaries = {}
     for language in languages:
-        vacancy_title = "программист {}".format(language)
+        vacancy_query = "программист {}".format(language)
         payload = {
-                    'text': vacancy_title,
+                    'text': vacancy_query,
                     'area': HH_REGION,
                     'period': HH_PERIOD,
                     'clusters': "true",
@@ -100,10 +98,10 @@ def get_hh_vacancies_by_language(languages):
         }
         response = requests.get(HH_ENTRY_URL, params=payload)
         response.raise_for_status()
-        vacancies_data = response.json()
-        average_salary, vacancies_processed = predict_rub_salary_hh(vacancy_title)
+        all_vacancies = response.json()
+        average_salary, vacancies_processed = predict_rub_salary_hh(vacancy_query)
         vacancy_result = {language: {
-            "vacancies_found": vacancies_data['found'],
+            "vacancies_found": all_vacancies['found'],
             "vacancies_processed": vacancies_processed,
             "average_salary": average_salary
         }}
@@ -111,30 +109,28 @@ def get_hh_vacancies_by_language(languages):
     return vacancies_with_salaries
 
 
-def predict_rub_salary_hh(vacancy):
-    all_vacancies_collected_data = collect_all_vacancies_hh(vacancy)
+def predict_rub_salary_hh(vacancy_query):
+    all_collected_vacancies = collect_all_vacancies_hh(vacancy_query)
     salaries = []
-    for page_data in all_vacancies_collected_data:
-        for vacancy in page_data['items']:
+    for page in all_collected_vacancies:
+        for vacancy in page['items']:
             if not vacancy['salary'] is None and vacancy['salary']['currency'] == 'RUR':
                 salaries.append(predict_salary(vacancy['salary']['from'], vacancy['salary']['to']))
     salaries_sum = 0
     vacancies_processed = 0
-    for item in salaries:
-        if item is not None:
+    for salary in salaries:
+        if salary is not None:
             vacancies_processed = vacancies_processed + 1
-            salaries_sum = salaries_sum + item
+            salaries_sum = salaries_sum + salary
     average_salary = int(salaries_sum / vacancies_processed)
     return average_salary, vacancies_processed
 
 
-def collect_all_vacancies_hh(vacancy):
-    print(vacancy)
-    collected_vacancies_data = []
+def collect_all_vacancies_hh(vacancy_query):
+    all_collected_vacancies = []
     for page in count(0):
-        print(page)
         payload = {
-                'text': vacancy,
+                'text': vacancy_query,
                 'area': HH_REGION,
                 'period': "30",
                 'page': page,
@@ -142,11 +138,11 @@ def collect_all_vacancies_hh(vacancy):
         }
         page_response = requests.get(HH_ENTRY_URL, params=payload)
         page_response.raise_for_status()
-        page_data = page_response.json()
-        collected_vacancies_data.append(page_data)
-        if page >= page_data['pages']:
+        vacancies_from_page = page_response.json()
+        all_collected_vacancies.append(vacancies_from_page)
+        if page >= vacancies_from_page['pages']:
             break
-    return collected_vacancies_data
+    return all_collected_vacancies
 
 
 def predict_salary(salary_from, salary_to):
@@ -161,22 +157,22 @@ def predict_salary(salary_from, salary_to):
     return predicted_salary
 
 
-def prepare_data_for_table(vacancy_result):
+def prepare_results_for_table(vacancy_result):
     languages_with_salaries = []
     for key, value in vacancy_result.items():
-        vacancy_data = []
-        vacancy_data.append(key)
+        vacancy = []
+        vacancy.append(key)
         for key, value in value.items():
-            vacancy_data.append(value)
-        languages_with_salaries.append(vacancy_data)
+            vacancy.append(value)
+        languages_with_salaries.append(vacancy)
     return languages_with_salaries
 
 
 def draw_table(results, title):
-    data_for_table = prepare_data_for_table(results)
+    results_for_table = prepare_results_for_table(results)
     columns = ['Язык программирования', 'Вакансий найдено', 'Вакансий обработано', 'Средняя зарплата']
-    data_for_table.insert(0, columns)
-    table_instance = DoubleTable(data_for_table, title)
+    results_for_table.insert(0, columns)
+    table_instance = DoubleTable(results_for_table, title)
     table_instance.justify_columns[2] = 'right'
     table_with_results = table_instance.table
     return table_with_results
